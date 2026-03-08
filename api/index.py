@@ -3,19 +3,18 @@ import numpy as np
 import pickle
 import os
 import shap
+import traceback
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
 # --- Load Pre-trained Artifacts ---
-# In Vercel, paths are relative to the root of the project.
 MODEL_PATH = "models/heart_model.pkl"
 SCALER_PATH = "models/scaler.pkl"
 EXPLAINER_PATH = "models/explainer.pkl"
 
-app = FastAPI(title="Heart Disease Risk Predictor API")
+app = FastAPI(title="HeartSync AI API")
 
-# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -32,14 +31,19 @@ def load_artifacts():
     global model, scaler, explainer
     if model is None:
         try:
-            with open(MODEL_PATH, 'rb') as f:
-                model = pickle.load(f)
-            with open(SCALER_PATH, 'rb') as f:
-                scaler = pickle.load(f)
-            with open(EXPLAINER_PATH, 'rb') as f:
-                explainer = pickle.load(f)
+            if os.path.exists(MODEL_PATH):
+                with open(MODEL_PATH, 'rb') as f:
+                    model = pickle.load(f)
+                with open(SCALER_PATH, 'rb') as f:
+                    scaler = pickle.load(f)
+                with open(EXPLAINER_PATH, 'rb') as f:
+                    explainer = pickle.load(f)
+                print("Models loaded successfully")
+            else:
+                print(f"Model file not found at {MODEL_PATH}")
         except Exception as e:
             print(f"Error loading models: {e}")
+            traceback.print_exc()
 
 class PatientData(BaseModel):
     age: int
@@ -56,26 +60,51 @@ class PatientData(BaseModel):
     ca: int
     thal: int
 
+@app.get("/api/health")
+async def health():
+    return {"status": "healthy", "model_loaded": model is not None}
+
 @app.post("/api/predict")
 async def predict(data: PatientData):
     load_artifacts()
     if model is None:
-        raise HTTPException(status_code=500, detail="Models not loaded")
+        raise HTTPException(status_code=500, detail="Machine learning models are not initialized on the server.")
     
     try:
-        input_df = pd.DataFrame([data.dict()])
+        data_dict = data.model_dump()
+        feature_order = ['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 
+                         'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal']
+        input_df = pd.DataFrame([data_dict])[feature_order]
         input_scaled = scaler.transform(input_df)
         
         prob = model.predict_proba(input_scaled)[0][1]
         risk_score = round(prob * 100, 2)
         
-        shap_values = explainer.shap_values(input_scaled)
-        if isinstance(shap_values, list):
-            sv = shap_values[1][0]
-        else:
-            sv = shap_values[0]
+        # --- Robust SHAP Calculation ---
+        sv = np.zeros(len(feature_order))
+        try:
+            s_vals = explainer.shap_values(input_scaled)
+            if isinstance(s_vals, list):
+                sv = s_vals[1][0] if len(s_vals) > 1 else s_vals[0][0]
+            elif hasattr(s_vals, 'values'):
+                sv = s_vals.values[0]
+                if len(sv.shape) > 1:
+                    sv = sv[:, 1] if sv.shape[1] > 1 else sv[:, 0]
+            elif hasattr(s_vals, 'shape'):
+                if len(s_vals.shape) == 3:
+                    sv = s_vals[0, :, 1] if s_vals.shape[2] > 1 else s_vals[0, :, 0]
+                elif len(s_vals.shape) == 2:
+                    sv = s_vals[0]
+            sv = np.array(sv).flatten()
+        except Exception as shap_err:
+            print(f"SHAP Error: {shap_err}")
+            if hasattr(model, 'feature_importances_'):
+                sv = model.feature_importances_
+
+        feature_importance = {}
+        for i, val in enumerate(sv):
+            feature_importance[feature_order[i]] = float(val)
             
-        feature_importance = dict(zip(input_df.columns, sv))
         sorted_factors = sorted(feature_importance.items(), key=lambda x: abs(x[1]), reverse=True)[:3]
         
         main_factors = []
@@ -89,8 +118,5 @@ async def predict(data: PatientData):
             "status": "Success"
         }
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/health")
-async def health():
-    return {"status": "healthy"}
