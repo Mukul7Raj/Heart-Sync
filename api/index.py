@@ -8,12 +8,23 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
+from fastapi.responses import HTMLResponse
+
 # --- Load Pre-trained Artifacts ---
 MODEL_PATH = "models/heart_model.pkl"
 SCALER_PATH = "models/scaler.pkl"
 EXPLAINER_PATH = "models/explainer.pkl"
 
 app = FastAPI(title="HeartSync AI API")
+
+@app.get("/", response_class=HTMLResponse)
+async def read_index():
+    # Vercel runs from the root of the repo
+    try:
+        with open('index.html', 'r', encoding='utf-8') as f:
+            return f.read()
+    except Exception as e:
+        return f"<h1>Error loading index.html</h1><p>{str(e)}</p>"
 
 app.add_middleware(
     CORSMiddleware,
