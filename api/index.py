@@ -60,6 +60,10 @@ class PatientData(BaseModel):
     ca: int
     thal: int
 
+@app.get("/api")
+async def root():
+    return {"message": "HeartSync AI API is running", "endpoints": ["/api/predict", "/api/health"]}
+
 @app.get("/api/health")
 async def health():
     return {"status": "healthy", "model_loaded": model is not None}
