@@ -66,7 +66,7 @@ else:
         explainer = pickle.load(f)
 
 # --- FastAPI Backend ---
-app = FastAPI(title="Heart Disease Risk Predictor API V2")
+app = FastAPI(title="HeartSync AI API")
 
 app.add_middleware(
     CORSMiddleware,
