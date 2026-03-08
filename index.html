@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HeartSync | Heart Disease Risk Predictor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-glow: rgba(79, 70, 229, 0.4);
+            --bg: #0f172a;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            overflow-x: hidden;
+        }
+
+        /* Abstract Background Glows */
+        .glow {
+            position: fixed;
+            width: 40vw;
+            height: 40vw;
+            background: var(--primary-glow);
+            filter: blur(100px);
+            border-radius: 50%;
+            z-index: -1;
+            animation: move 20s infinite alternate;
+        }
+
+        .glow-1 {
+            top: -10%;
+            left: -10%;
+        }
+
+        .glow-2 {
+            bottom: -10%;
+            right: -10%;
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        @keyframes move {
+            from {
+                transform: translate(0, 0);
+            }
+
+            to {
+                transform: translate(50px, 50px);
+            }
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 3rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-size: 0.875rem;
+            color: var(--text-dim);
+            font-weight: 500;
+        }
+
+        input,
+        select {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            color: white;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        button {
+            width: 100%;
+            padding: 1rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px var(--primary-glow);
+        }
+
+        /* Result Section */
+        #result-card {
+            display: none;
+            margin-top: 3rem;
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            text-align: center;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .risk-score {
+            font-size: 4rem;
+            font-weight: 600;
+            margin: 1rem 0;
+        }
+
+        .factors h3 {
+            margin-bottom: 1rem;
+            color: var(--text-dim);
+        }
+
+        .factor-tag {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 30px;
+            margin: 0.25rem;
+            font-size: 0.9rem;
+            border: 1px solid var(--glass-border);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+
+    <div class="container">
+        <header>
+            <h1>HeartSync AI</h1>
+            <p>Advanced Prediction • Data-Driven Explainability</p>
+        </header>
+
+        <form id="prediction-form">
+            <div class="grid">
+                <div class="input-group">
+                    <label>Age</label>
+                    <input type="number" name="age" value="52" required>
+                </div>
+                <div class="input-group">
+                    <label>Sex</label>
+                    <select name="sex">
+                        <option value="1">Male</option>
+                        <option value="0">Female</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Chest Pain (0-3)</label>
+                    <input type="number" name="cp" min="0" max="3" value="0">
+                </div>
+                <div class="input-group">
+                    <label>BP (mm Hg)</label>
+                    <input type="number" name="trestbps" value="125">
+                </div>
+                <div class="input-group">
+                    <label>Cholesterol</label>
+                    <input type="number" name="chol" value="212">
+                </div>
+                <div class="input-group">
+                    <label>Max Heart Rate</label>
+                    <input type="number" name="thalach" value="168">
+                </div>
+            </div>
+
+            <!-- Minimal set for UI brevity, filling others with defaults in JS -->
+            <button type="submit">Analyze Risk Probability</button>
+        </form>
+
+        <div id="result-card">
+            <p>Risk Probability</p>
+            <div class="risk-score" id="risk-score">0%</div>
+            <div class="factors">
+                <h3>Main Factors (SHAP)</h3>
+                <div id="factor-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('prediction-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+
+            // Fill defaults for non-visible inputs
+            const payload = {
+                ...data,
+                age: parseInt(data.age),
+                sex: parseInt(data.sex),
+                cp: parseInt(data.cp),
+                trestbps: parseInt(data.trestbps),
+                chol: parseInt(data.chol),
+                thalach: parseInt(data.thalach),
+                fbs: 0,
+                restecg: 1,
+                exang: 0,
+                oldpeak: 1.0,
+                slope: 2,
+                ca: 0,
+                thal: 1
+            };
+
+            const apiUrl = window.location.origin.includes('vercel.app')
+                ? '/api/predict'
+                : 'http://localhost:8000/api/predict';
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorDetail = await response.json();
+                    throw new Error(errorDetail.detail || "Server Error 500");
+                }
+
+                const result = await response.json();
+
+                // UI Updates
+                const card = document.getElementById('result-card');
+                const score = document.getElementById('risk-score');
+                const list = document.getElementById('factor-list');
+
+                card.style.display = 'block';
+                score.innerText = result.risk_probability + '%';
+                score.style.color = result.risk_probability > 50 ? 'var(--danger)' : 'var(--success)';
+
+                list.innerHTML = '';
+                result.main_factors.forEach(f => {
+                    const tag = document.createElement('span');
+                    tag.className = 'factor-tag';
+                    tag.innerText = f;
+                    list.appendChild(tag);
+                });
+
+                card.scrollIntoView({ behavior: 'smooth' });
+
+            } catch (err) {
+                console.error("Fetch Error:", err);
+                alert('Oops! ' + err.message + '\n\nPlease check the terminal for the full Error Traceback.');
+            }
+        });
+    </script>
+</body>
+
+</html>
